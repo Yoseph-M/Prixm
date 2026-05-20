@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Subscription & Bill Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; }
+    .chip { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; font-size: 11px; background: #f3f4f6; color: #374151; margin-right: 4px; }
+    .btn { padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; }
+    .btn-primary { background: #111827; color: white; }
+    .btn-ghost { background: transparent; color: #374151; border: 1px solid #e5e7eb; }
+    dialog::backdrop { background: rgba(0,0,0,0.4); }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <div class="max-w-6xl mx-auto p-6">
+    <header class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Subscriptions</h1>
+        <p class="text-sm text-gray-500">All your recurring bills, normalized to USD.</p>
+      </div>
+      <button class="btn btn-primary" onclick="openEditor()">+ Add subscription</button>
+    </header>
+
+    <!-- KPI cards -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6" id="kpis"></section>
+
+    <div class="grid md:grid-cols-3 gap-6">
+      <!-- Left: list -->
+      <div class="md:col-span-2 card p-4">
+        <div class="flex gap-2 mb-3">
+          <input id="search" type="text" placeholder="Search name, vendor, tag…"
+                 class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+          <select id="statusFilter" class="border border-gray-200 rounded-lg px-2 py-2 text-sm">
+            <option value="">All</option>
+            <option value="active">Active</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div id="tagChips" class="mb-3"></div>
+        <div id="subList" class="divide-y"></div>
+      </div>
+
+      <!-- Right: chart + alerts -->
+      <div class="space-y-6">
+        <div class="card p-4">
+          <h3 class="font-medium mb-2">Monthly spend by category</h3>
+          <canvas id="catChart" height="200"></canvas>
+        </div>
+        <div class="card p-4">
+          <h3 class="font-medium mb-2">Renewal alerts</h3>
+          <div id="alerts" class="text-sm text-gray-600 space-y-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail drawer -->
+  <dialog id="detail" class="rounded-xl p-0 w-[520px] max-w-full">
+    <div class="p-5">
+      <div id="detailBody"></div>
+      <div class="mt-4 flex justify-end gap-2">
+        <button class="btn btn-ghost" onclick="document.getElementById('detail').close()">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Editor modal -->
+  <dialog id="editor" class="rounded-xl p-0 w-[460px] max-w-full">
+    <form id="editorForm" class="p-5 space-y-3" onsubmit="return saveSub(event)">
+      <h3 class="font-semibold text-lg" id="editorTitle">New subscription</h3>
+      <input type="hidden" name="id" />
+      <div class="grid grid-cols-2 gap-3">
+        <label class="text-sm">Name<input name="name" required class="mt-1 w-full border rounded-lg px-2 py-1.5" /></label>
+        <label class="text-sm">Vendor<input name="vendor" class="mt-1 w-full border rounded-lg px-2 py-1.5" /></label>
+        <label class="text-sm">Category<input name="category" value="other" class="mt-1 w-full border rounded-lg px-2 py-1.5" /></label>
+        <label class="text-sm">Tags (comma)<input name="tags" class="mt-1 w-full border rounded-lg px-2 py-1.5" /></label>
+        <label class="text-sm">Amount<input name="amount" type="number" step="0.01" required class="mt-1 w-full border rounded-lg px-2 py-1.5" /></label>
+        <label class="text-sm">Currency<input name="currency" value="USD" required class="mt-1 w-full border rounded-lg px-2 py-1.5" /></label>
+        <label class="text-sm">Cycle
+          <select name="billing_cycle" class="mt-1 w-full border rounded-lg px-2 py-1.5">
+            <option>monthly</option><option>yearly</option><option>weekly</option>
+          </select>
+        </label>
+        <label class="text-sm">Next renewal<input name="next_renewal" type="date" required class="mt-1 w-full border rounded-lg px-2 py-1.5" /></label>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('editor').close()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+<script>
+let chart;
+const fmt = (n) => "$" + Number(n || 0).toLocaleString(undefined, {maximumFractionDigits: 2});
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString() : "—";
+
+async function refresh() {
+  const [subs, totals, alerts] = await Promise.all([
+    fetch("/subscriptions?" + new URLSearchParams({
+      q: document.getElementById("search").value,
+      status: document.getElementById("statusFilter").value,
+    })).then(r => r.json()),
+    fetch("/dashboard/totals").then(r => r.json()),
+    fetch("/alerts").then(r => r.json()),
+  ]);
+  renderKpis(totals);
+  renderList(subs);
+  renderChips(subs);
+  renderChart(totals.by_category);
+  renderAlerts(alerts);
+}
+
+function renderKpis(t) {
+  document.getElementById("kpis").innerHTML = [
+    ["Monthly", fmt(t.monthly_total_usd)],
+    ["Yearly",  fmt(t.yearly_total_usd)],
+    ["Active",  t.active_count],
+    ["Cancelled", t.cancelled_count],
+  ].map(([k,v]) => `
+    <div class="card p-4">
+      <div class="text-xs uppercase tracking-wide text-gray-500">${k}</div>
+      <div class="text-2xl font-semibold mt-1">${v}</div>
+    </div>`).join("");
+}
+
+function renderList(subs) {
+  const el = document.getElementById("subList");
+  if (!subs.length) { el.innerHTML = '<p class="text-sm text-gray-500 py-6 text-center">Nothing matches.</p>'; return; }
+  el.innerHTML = subs.map(s => `
+    <div class="py-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 px-2 rounded" onclick='openDetail(${JSON.stringify(s).replace(/'/g, "&apos;")})'>
+      <div>
+        <div class="font-medium">${s.name} ${s.status === "cancelled" ? '<span class="chip" style="background:#fee2e2;color:#991b1b">cancelled</span>' : ''}</div>
+        <div class="text-xs text-gray-500 mt-0.5">
+          ${(s.tags||[]).map(t => `<span class="chip">#${t}</span>`).join("")}
+          · renews ${fmtDate(s.next_renewal)}
+        </div>
+      </div>
+      <div class="text-right">
+        <div class="font-medium">${fmt(s.cost_usd)}<span class="text-xs text-gray-400">/${s.billing_cycle}</span></div>
+        <div class="text-xs text-gray-400">${s.cost.amount} ${s.cost.currency}</div>
+      </div>
+    </div>`).join("");
+}
+
+function renderChips(subs) {
+  const tags = [...new Set(subs.flatMap(s => s.tags || []))];
+  document.getElementById("tagChips").innerHTML = tags.map(t =>
+    `<button class="chip hover:bg-gray-200" onclick="document.getElementById('search').value='${t}';refresh()">#${t}</button>`
+  ).join("");
+}
+
+function renderChart(byCat) {
+  const ctx = document.getElementById("catChart");
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: byCat.map(c => c.category),
+      datasets: [{ data: byCat.map(c => c.monthly_usd) }],
+    },
+    options: { plugins: { legend: { position: "bottom", labels: { boxWidth: 10 } } } },
+  });
+}
+
+function renderAlerts(alerts) {
+  const el = document.getElementById("alerts");
+  if (!alerts.length) { el.innerHTML = '<p class="text-gray-400">No upcoming renewals in the alert window.</p>'; return; }
+  el.innerHTML = alerts.map(a => `
+    <div class="flex justify-between items-start border-l-2 border-gray-900 pl-3">
+      <div>
+        <div class="font-medium">${a.name}</div>
+        <div class="text-xs text-gray-500">renews in ${a.window_days}d · ${fmtDate(a.next_renewal)}</div>
+      </div>
+      <div class="text-sm">${fmt(a.amount_usd)}</div>
+    </div>`).join("");
+}
+
+function openDetail(s) {
+  const body = document.getElementById("detailBody");
+  body.innerHTML = `
+    <h3 class="text-lg font-semibold">${s.name}</h3>
+    <p class="text-sm text-gray-500">${s.vendor || ""} · ${s.category}</p>
+    <div class="grid grid-cols-2 gap-2 my-3 text-sm">
+      <div><span class="text-gray-500">Cost:</span> ${s.cost.amount} ${s.cost.currency} (${fmt(s.cost_usd)})</div>
+      <div><span class="text-gray-500">Cycle:</span> ${s.billing_cycle}</div>
+      <div><span class="text-gray-500">Next renewal:</span> ${fmtDate(s.next_renewal)}</div>
+      <div><span class="text-gray-500">Status:</span> ${s.status}</div>
+    </div>
+    ${s.cancellation ? `<div class="text-sm bg-red-50 p-2 rounded mb-2">Cancelled ${fmtDate(s.cancellation.date)}: ${s.cancellation.reason}</div>` : ''}
+    <h4 class="font-medium mt-4 mb-1">Payment history (${(s.payments||[]).length})</h4>
+    <div class="text-xs text-gray-500 max-h-40 overflow-auto">
+      ${(s.payments||[]).map(p => `<div class="flex justify-between py-0.5"><span>${fmtDate(p.date)}</span><span>${fmt(p.amount_usd)}</span></div>`).join("") || '—'}
+    </div>
+    <div class="flex gap-2 mt-4">
+      <button class="btn btn-ghost" onclick='openEditor(${JSON.stringify(s).replace(/'/g,"&apos;")})'>Edit</button>
+      ${s.status !== 'cancelled' ? `<button class="btn btn-ghost" onclick="cancelSub('${s._id}')">Cancel sub</button>` : ''}
+      <button class="btn btn-ghost text-red-600" onclick="deleteSub('${s._id}')">Delete</button>
+    </div>`;
+  document.getElementById("detail").showModal();
+}
+
+function openEditor(s) {
+  const f = document.getElementById("editorForm");
+  f.reset();
+  if (s) {
+    document.getElementById("editorTitle").textContent = "Edit subscription";
+    f.id.value = s._id;
+    f.name.value = s.name; f.vendor.value = s.vendor || ""; f.category.value = s.category;
+    f.tags.value = (s.tags||[]).join(","); f.amount.value = s.cost.amount;
+    f.currency.value = s.cost.currency; f.billing_cycle.value = s.billing_cycle;
+    f.next_renewal.value = s.next_renewal?.slice(0,10);
+  } else {
+    document.getElementById("editorTitle").textContent = "New subscription";
+    f.next_renewal.value = new Date(Date.now()+7*864e5).toISOString().slice(0,10);
+  }
+  document.getElementById("editor").showModal();
+}
+
+async function saveSub(e) {
+  e.preventDefault();
+  const f = e.target;
+  const body = {
+    name: f.name.value, vendor: f.vendor.value, category: f.category.value,
+    tags: f.tags.value.split(",").map(s => s.trim()).filter(Boolean),
+    cost: { amount: parseFloat(f.amount.value), currency: f.currency.value.toUpperCase() },
+    billing_cycle: f.billing_cycle.value,
+    next_renewal: new Date(f.next_renewal.value).toISOString(),
+  };
+  const id = f.id.value;
+  await fetch(id ? `/subscriptions/${id}` : "/subscriptions", {
+    method: id ? "PUT" : "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body),
+  });
+  document.getElementById("editor").close();
+  document.getElementById("detail").close();
+  refresh();
+  return false;
+}
+
+async function cancelSub(id) {
+  const reason = prompt("Reason for cancelling?");
+  if (!reason) return;
+  await fetch(`/subscriptions/${id}/cancel`, {
+    method: "POST", headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({reason})
+  });
+  document.getElementById("detail").close();
+  refresh();
+}
+
+async function deleteSub(id) {
+  if (!confirm("Delete this subscription?")) return;
+  await fetch(`/subscriptions/${id}`, {method: "DELETE"});
+  document.getElementById("detail").close();
+  refresh();
+}
+
+document.getElementById("search").addEventListener("input", refresh);
+document.getElementById("statusFilter").addEventListener("change", refresh);
+refresh();
+setInterval(refresh, 30000);
+</script>
+</body>
+</html>
