@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prixm - Manage all your subscriptions in one place</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="logo">Prixm</div>
+            <nav class="nav">
+                <a href="#features">Features</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#testimonials">Testimonials</a>
+                <button class="btn-signin">Sign In</button>
+                <button class="btn-primary">Get Started</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1>Manage all your subscriptions in one place</h1>
+                <p>Track, organize, and optimize your recurring payments</p>
+                <button class="btn-hero">Get Started Free</button>
+            </div>
+            <div class="hero-dashboard">
+                <div class="dashboard-card">
+                    <div class="dashboard-header">
+                        <span>Your Subscriptions</span>
+                        <span class="total">$247.89/mo</span>
+                    </div>
+                    <div class="subscription-list">
+                        <div class="subscription-item netflix">
+                            <div class="sub-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                            </div>
+                            <div class="sub-info">
+                                <span class="sub-name">Netflix</span>
+                                <span class="sub-price">$15.99/mo</span>
+                            </div>
+                            <span class="sub-status active">Active</span>
+                        </div>
+                        <div class="subscription-item spotify">
+                            <div class="sub-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.5 14.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-3-4c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-3-4c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                                </svg>
+                            </div>
+                            <div class="sub-info">
+                                <span class="sub-name">Spotify</span>
+                                <span class="sub-price">$9.99/mo</span>
+                            </div>
+                            <span class="sub-status active">Active</span>
+                        </div>
+                        <div class="subscription-item youtube">
+                            <div class="sub-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+                                </svg>
+                            </div>
+                            <div class="sub-info">
+                                <span class="sub-name">YouTube Premium</span>
+                                <span class="sub-price">$11.99/mo</span>
+                            </div>
+                            <span class="sub-status active">Active</span>
+                        </div>
+                        <div class="subscription-item adobe">
+                            <div class="sub-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2L2 22h20L12 2zm0 4l6 14H6l6-14z"/>
+                                </svg>
+                            </div>
+                            <div class="sub-info">
+                                <span class="sub-name">Adobe Creative</span>
+                                <span class="sub-price">$54.99/mo</span>
+                            </div>
+                            <span class="sub-status active">Active</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <h2>Everything you need to manage subscriptions</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v20M2 12h20"/>
+                        </svg>
+                    </div>
+                    <h3>Track All Subscriptions</h3>
+                    <p>Automatically detect and track all your recurring payments in one dashboard</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <h3>Smart Reminders</h3>
+                    <p>Get notified before renewals so you never miss a payment or cancellation deadline</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                    </div>
+                    <h3>Spending Analytics</h3>
+                    <p>Visualize your subscription spending with detailed charts and insights</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing" id="pricing">
+        <div class="container">
+            <h2>Simple, transparent pricing</h2>
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <h3>Free</h3>
+                    <div class="price">$0<span>/month</span></div>
+                    <ul class="features-list">
+                        <li>Track up to 5 subscriptions</li>
+                        <li>Basic spending analytics</li>
+                        <li>Email reminders</li>
+                    </ul>
+                    <button class="btn-outline">Get Started</button>
+                </div>
+                <div class="pricing-card popular">
+                    <div class="popular-badge">Most Popular</div>
+                    <h3>Pro</h3>
+                    <div class="price">$9<span>/month</span></div>
+                    <ul class="features-list">
+                        <li>Unlimited subscriptions</li>
+                        <li>Advanced analytics</li>
+                        <li>Smart reminders</li>
+                        <li>Bank sync</li>
+                    </ul>
+                    <button class="btn-primary">Get Started</button>
+                </div>
+                <div class="pricing-card">
+                    <h3>Enterprise</h3>
+                    <div class="price">$29<span>/month</span></div>
+                    <ul class="features-list">
+                        <li>Everything in Pro</li>
+                        <li>Team management</li>
+                        <li>API access</li>
+                        <li>Priority support</li>
+                    </ul>
+                    <button class="btn-outline">Contact Sales</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="testimonials" id="testimonials">
+        <div class="container">
+            <h2>Loved by thousands of users</h2>
+            <div class="testimonials-grid">
+                <div class="testimonial-card">
+                    <div class="stars">★★★★★</div>
+                    <p>"Prixm helped me save over $50/month by identifying unused subscriptions. Absolutely essential!"</p>
+                    <div class="author">
+                        <div class="avatar">SM</div>
+                        <div class="author-info">
+                            <span class="name">Sarah Mitchell</span>
+                            <span class="title">Product Designer</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="stars">★★★★★</div>
+                    <p>"The smart reminders feature is a game-changer. I never miss a payment or forget to cancel trials anymore."</p>
+                    <div class="author">
+                        <div class="avatar">JC</div>
+                        <div class="author-info">
+                            <span class="name">James Chen</span>
+                            <span class="title">Software Engineer</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="stars">★★★★★</div>
+                    <p>"Finally, a clean and intuitive way to manage all my subscriptions. The analytics are incredibly helpful."</p>
+                    <div class="author">
+                        <div class="avatar">EP</div>
+                        <div class="author-info">
+                            <span class="name">Emily Parker</span>
+                            <span class="title">Marketing Manager</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="logo">Prixm</div>
+                    <p>Manage all your subscriptions in one place</p>
+                </div>
+                <div class="footer-links">
+                    <div class="link-column">
+                        <h4>Product</h4>
+                        <a href="#">Features</a>
+                        <a href="#">Pricing</a>
+                        <a href="#">Integrations</a>
+                    </div>
+                    <div class="link-column">
+                        <h4>Company</h4>
+                        <a href="#">About</a>
+                        <a href="#">Blog</a>
+                        <a href="#">Careers</a>
+                    </div>
+                    <div class="link-column">
+                        <h4>Legal</h4>
+                        <a href="#">Privacy</a>
+                        <a href="#">Terms</a>
+                        <a href="#">Security</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Prixm. All rights reserved.</p>
+                <div class="social-links">
+                    <a href="#">Twitter</a>
+                    <a href="#">LinkedIn</a>
+                    <a href="#">GitHub</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
