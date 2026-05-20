@@ -1,0 +1,30 @@
+# Node
+node_modules/
+dist/
+.angular/
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# Environment files and credentials
+.env
+.env.*
+!*.example
+service-account.json
+
+# IDEs
+.vscode/
+.history/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
