@@ -69,7 +69,7 @@ export class LandingPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @HostListener('window:scroll', [])
   onWindowScroll() {
-    this.scrolled = window.scrollY > 40;
+    this.scrolled = window.scrollY > 80;
   }
 
   ngOnInit() {
