@@ -195,42 +195,9 @@ button, input, select, textarea {
   opacity: 1;
 }
 
-/* ── NAVIGATION ── */
-.navbar {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  height: 72px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 2rem;
-  z-index: 1000;
-  border-bottom: 1px solid transparent;
-  transition: all 0.3s ease;
-}
-.navbar.scrolled {
-  background: rgba(0, 0, 0, 0.6) !important;
-  backdrop-filter: blur(24px) saturate(150%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.nav-center {
-  display: flex;
-  gap: 0.25rem;
-  padding: 0.35rem;
-}
-
-.nav-link {
-  color: var(--text-muted);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  padding: 0.4rem 1rem;
-  border-radius: var(--radius-pill);
-  transition: all 0.2s;
-}
-.nav-link:hover {
-  color: var(--text);
-  background: rgba(255,255,255,0.05);
+/* ── LOGO INVERSION ── */
+img[src*="logo.png"] {
+  filter: invert(1) brightness(1.2);
 }
 
 /* ── REVEAL ANIMATIONS ── */
