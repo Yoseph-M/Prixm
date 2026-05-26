@@ -28,3 +28,6 @@ service-account.json
 # OS files
 .DS_Store
 Thumbs.db
+
+# MongoDB data files
+data/db/
