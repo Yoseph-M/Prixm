@@ -103,8 +103,12 @@ export class AuthService {
       const cred = await signInWithPopup(auth, googleProvider);
       await this.syncUserToBackend(cred.user);
     } catch (err: any) {
-      if (err.code === 'auth/popup-blocked') {
-        console.warn('Popup blocked, falling back to redirect sign-in...');
+      const errMsg = err?.message || err?.toString() || '';
+      if (
+        err.code === 'auth/popup-blocked' ||
+        errMsg.includes('Pending promise was never set')
+      ) {
+        console.warn('Popup blocked or failed, falling back to redirect sign-in...');
         await signInWithRedirect(auth, googleProvider);
         return;
       }
