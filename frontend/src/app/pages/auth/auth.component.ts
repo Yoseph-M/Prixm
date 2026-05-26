@@ -46,7 +46,7 @@ export class AuthComponent implements OnInit {
       this.validationError = 'Please fill in all fields.';
       return;
     }
-    if (!this.termsAccepted) {
+    if (this.mode === 'signup' && !this.termsAccepted) {
       this.validationError = 'You must accept the Terms of Service.';
       return;
     }

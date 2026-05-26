@@ -7,6 +7,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut as firebaseSignOut,
   updateProfile,
   User,
@@ -53,6 +55,18 @@ export class AuthService {
   error = signal<string | null>(null);
 
   constructor(private router: Router) {
+    getRedirectResult(auth)
+      .then(async (cred) => {
+        if (cred?.user) {
+          await this.syncUserToBackend(cred.user);
+          this.router.navigateByUrl('/dashboard');
+        }
+      })
+      .catch((err) => {
+        console.error('Redirect sign-in error:', err);
+        this.error.set(mapError(err));
+      });
+
     onAuthStateChanged(auth, (firebaseUser) => {
       this.user.set(firebaseUser);
       this.loading.set(false);
@@ -89,6 +103,11 @@ export class AuthService {
       const cred = await signInWithPopup(auth, googleProvider);
       await this.syncUserToBackend(cred.user);
     } catch (err: any) {
+      if (err.code === 'auth/popup-blocked') {
+        console.warn('Popup blocked, falling back to redirect sign-in...');
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
       this.error.set(mapError(err));
       throw err;
     }

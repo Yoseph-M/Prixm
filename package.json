@@ -4,6 +4,7 @@
   "private": true,
   "description": "Root configuration to support React/TypeScript components analysis by IDE",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "clsx": "^2.1.1",
     "framer-motion": "^11.11.17",
     "react": "^18.3.1",
