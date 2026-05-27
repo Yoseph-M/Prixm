@@ -7,6 +7,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut as firebaseSignOut,
   updateProfile,
   User,
@@ -58,6 +60,18 @@ export class AuthService {
   private synced = false;
 
   constructor(private router: Router) {
+    // Handle returning from a redirect fallback (when popup was blocked).
+    getRedirectResult(auth)
+      .then((cred) => {
+        if (cred?.user) {
+          this.router.navigateByUrl('/dashboard');
+        }
+      })
+      .catch((err) => {
+        console.error('Redirect sign-in error:', err);
+        this.error.set(mapError(err));
+      });
+
     // Central auth state listener — fires on initial load AND after any sign-in.
     // This is the single source of truth for the user's auth state.
     onAuthStateChanged(auth, async (firebaseUser) => {
@@ -115,6 +129,11 @@ export class AuthService {
       // Popup closed with successful sign-in — navigate to dashboard.
       this.router.navigateByUrl('/dashboard');
     } catch (err: any) {
+      // If the browser blocked the popup, silently fall back to redirect.
+      if (err.code === 'auth/popup-blocked') {
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
       this.error.set(mapError(err));
       throw err;
     }
