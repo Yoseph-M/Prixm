@@ -7,8 +7,6 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   signOut as firebaseSignOut,
   updateProfile,
   User,
@@ -29,6 +27,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
+// Always show the account chooser — matches professional OAuth flows.
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 const ERROR_MAP: Record<string, string> = {
   'auth/wrong-password':         'Incorrect password. Please try again.',
@@ -54,22 +54,27 @@ export class AuthService {
   loading = signal<boolean>(true);
   error = signal<string | null>(null);
 
-  constructor(private router: Router) {
-    getRedirectResult(auth)
-      .then(async (cred) => {
-        if (cred?.user) {
-          await this.syncUserToBackend(cred.user);
-          this.router.navigateByUrl('/dashboard');
-        }
-      })
-      .catch((err) => {
-        console.error('Redirect sign-in error:', err);
-        this.error.set(mapError(err));
-      });
+  /** Prevents duplicate backend syncs within the same browser session. */
+  private synced = false;
 
-    onAuthStateChanged(auth, (firebaseUser) => {
+  constructor(private router: Router) {
+    // Central auth state listener — fires on initial load AND after any sign-in.
+    // This is the single source of truth for the user's auth state.
+    onAuthStateChanged(auth, async (firebaseUser) => {
       this.user.set(firebaseUser);
       this.loading.set(false);
+
+      // Sync the user to the backend once per session when they are logged in.
+      if (firebaseUser && !this.synced) {
+        this.synced = true;
+        try {
+          await this.syncUserToBackend(firebaseUser);
+        } catch (syncErr) {
+          console.error('Backend sync failed:', syncErr);
+          // Reset so we retry on the next state change.
+          this.synced = false;
+        }
+      }
     });
   }
 
@@ -90,7 +95,13 @@ export class AuthService {
       if (displayName) {
         await updateProfile(cred.user, { displayName });
       }
-      await this.syncUserToBackend(cred.user);
+      // Explicit sync here so displayName is captured in the backend immediately.
+      try {
+        await this.syncUserToBackend(cred.user);
+        this.synced = true; // Prevent duplicate from onAuthStateChanged.
+      } catch (syncErr) {
+        console.error('Backend sync failed during signUp:', syncErr);
+      }
     } catch (err: any) {
       this.error.set(mapError(err));
       throw err;
@@ -100,7 +111,9 @@ export class AuthService {
   async signInWithGoogle() {
     this.error.set(null);
     try {
-      await signInWithRedirect(auth, googleProvider);
+      await signInWithPopup(auth, googleProvider);
+      // Popup closed with successful sign-in — navigate to dashboard.
+      this.router.navigateByUrl('/dashboard');
     } catch (err: any) {
       this.error.set(mapError(err));
       throw err;
@@ -109,6 +122,7 @@ export class AuthService {
 
   async signOut() {
     this.error.set(null);
+    this.synced = false;
     await firebaseSignOut(auth);
     this.router.navigate(['/']);
   }
@@ -128,3 +142,4 @@ export class AuthService {
     });
   }
 }
+
