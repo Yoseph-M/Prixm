@@ -24,7 +24,7 @@ try {
   VITE_API_URL: '${envConfig.VITE_API_URL || 'http://localhost:8000'}',
   VITE_COMPANY_ENRICH_API_KEY: '${envConfig.VITE_COMPANY_ENRICH_API_KEY || ''}'
 };`;
-  
+
   if (!fs.existsSync('./src/environments')) {
     fs.mkdirSync('./src/environments', { recursive: true });
   }
