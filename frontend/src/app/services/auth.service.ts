@@ -60,23 +60,37 @@ export class AuthService {
   private synced = false;
 
   constructor(private router: Router) {
+    let redirectResolved = false;
+    let authStateFired = false;
+
+    const checkLoading = () => {
+      if (redirectResolved && authStateFired) {
+        this.loading.set(false);
+      }
+    };
+
     // Handle returning from a redirect fallback (when popup was blocked).
     getRedirectResult(auth)
       .then((cred) => {
+        redirectResolved = true;
         if (cred?.user) {
-          this.router.navigateByUrl('/dashboard');
+          this.user.set(cred.user); // Explicitly set user to prevent race conditions
         }
+        checkLoading();
       })
       .catch((err) => {
+        redirectResolved = true;
         console.error('Redirect sign-in error:', err);
         this.error.set(mapError(err));
+        checkLoading();
       });
 
     // Central auth state listener — fires on initial load AND after any sign-in.
     // This is the single source of truth for the user's auth state.
     onAuthStateChanged(auth, async (firebaseUser) => {
       this.user.set(firebaseUser);
-      this.loading.set(false);
+      authStateFired = true;
+      checkLoading();
 
       // Sync the user to the backend once per session when they are logged in.
       if (firebaseUser && !this.synced) {
@@ -95,7 +109,8 @@ export class AuthService {
   async signIn(email: string, password: string) {
     this.error.set(null);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      this.user.set(cred.user);
     } catch (err: any) {
       this.error.set(mapError(err));
       throw err;
@@ -109,6 +124,7 @@ export class AuthService {
       if (displayName) {
         await updateProfile(cred.user, { displayName });
       }
+      this.user.set(cred.user);
       // Explicit sync here so displayName is captured in the backend immediately.
       try {
         await this.syncUserToBackend(cred.user);
@@ -125,9 +141,8 @@ export class AuthService {
   async signInWithGoogle() {
     this.error.set(null);
     try {
-      await signInWithPopup(auth, googleProvider);
-      // Popup closed with successful sign-in — navigate to dashboard.
-      this.router.navigateByUrl('/dashboard');
+      const cred = await signInWithPopup(auth, googleProvider);
+      this.user.set(cred.user);
     } catch (err: any) {
       // If the browser blocked the popup, silently fall back to redirect.
       if (err.code === 'auth/popup-blocked') {
