@@ -6,6 +6,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  signInWithPopup,
   signInWithRedirect,
   signOut as firebaseSignOut,
   updateProfile,
@@ -112,9 +113,18 @@ export class AuthService {
 
   async signInWithGoogle() {
     this.error.set(null);
-    // Always use redirect — avoids popup-blocking issues and race conditions
-    // with Angular route guards. The result is handled by /auth/callback.
-    await signInWithRedirect(auth, googleProvider);
+    try {
+      const cred = await signInWithPopup(auth, googleProvider);
+      this.user.set(cred.user);
+    } catch (err: any) {
+      // If the browser blocked the popup, silently fall back to redirect.
+      if (err.code === 'auth/popup-blocked') {
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
+      this.error.set(mapError(err));
+      throw err;
+    }
   }
 
   async signOut() {

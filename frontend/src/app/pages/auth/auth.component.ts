@@ -68,9 +68,11 @@ export class AuthComponent implements OnInit {
 
   async handleGoogleSignIn() {
     try {
-      // signInWithRedirect navigates the browser away automatically.
-      // The result is handled by /auth/callback when Google redirects back.
       await this.authService.signInWithGoogle();
+      if (this.authService.user()) {
+        const redirect = this.route.snapshot.queryParams['redirect'] || '/dashboard';
+        this.router.navigateByUrl(redirect);
+      }
     } catch (err) {
       // Error is handled in authService
     }
