@@ -6,9 +6,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInWithPopup,
   signInWithRedirect,
-  getRedirectResult,
   signOut as firebaseSignOut,
   updateProfile,
   User,
@@ -60,37 +58,11 @@ export class AuthService {
   private synced = false;
 
   constructor(private router: Router) {
-    let redirectResolved = false;
-    let authStateFired = false;
-
-    const checkLoading = () => {
-      if (redirectResolved && authStateFired) {
-        this.loading.set(false);
-      }
-    };
-
-    // Handle returning from a redirect fallback (when popup was blocked).
-    getRedirectResult(auth)
-      .then((cred) => {
-        redirectResolved = true;
-        if (cred?.user) {
-          this.user.set(cred.user); // Explicitly set user to prevent race conditions
-        }
-        checkLoading();
-      })
-      .catch((err) => {
-        redirectResolved = true;
-        console.error('Redirect sign-in error:', err);
-        this.error.set(mapError(err));
-        checkLoading();
-      });
-
     // Central auth state listener — fires on initial load AND after any sign-in.
     // This is the single source of truth for the user's auth state.
     onAuthStateChanged(auth, async (firebaseUser) => {
       this.user.set(firebaseUser);
-      authStateFired = true;
-      checkLoading();
+      this.loading.set(false);
 
       // Sync the user to the backend once per session when they are logged in.
       if (firebaseUser && !this.synced) {
@@ -140,18 +112,9 @@ export class AuthService {
 
   async signInWithGoogle() {
     this.error.set(null);
-    try {
-      const cred = await signInWithPopup(auth, googleProvider);
-      this.user.set(cred.user);
-    } catch (err: any) {
-      // If the browser blocked the popup, silently fall back to redirect.
-      if (err.code === 'auth/popup-blocked') {
-        await signInWithRedirect(auth, googleProvider);
-        return;
-      }
-      this.error.set(mapError(err));
-      throw err;
-    }
+    // Always use redirect — avoids popup-blocking issues and race conditions
+    // with Angular route guards. The result is handled by /auth/callback.
+    await signInWithRedirect(auth, googleProvider);
   }
 
   async signOut() {
