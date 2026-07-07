@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: submgr-frontend
     ports:
-      - "5173:5000"
+      - "5173:5173"
     env_file: ./frontend/.env
     volumes:
       - ./frontend/src:/app/src
