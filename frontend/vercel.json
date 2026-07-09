@@ -1,5 +1,5 @@
 {
-  "buildCommand": "node generate-env.js && npx ng build --configuration production",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist/frontend/browser",
   "installCommand": "npm install",
   "rewrites": [
