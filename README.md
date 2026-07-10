@@ -2,7 +2,7 @@
 
 Prixm is a highly polished, responsive **Subscription and Bill Intelligence Platform** designed to track recurring payments, normalize multi-currency transactions into USD, fire proactive renewal alerts, and present a sleek dashboard of spending trends.
 
-Built as a decoupled monorepo, Prixm includes a **FastAPI backend** (with MongoDB Atlas + Redis) and a modern **Angular 18 dark-themed frontend**.
+Built as a decoupled monorepo, Prixm includes a **FastAPI backend** (with MongoDB Atlas + Redis) and a modern **React/Vite dark-themed frontend**.
 
 ---
 
@@ -12,42 +12,19 @@ Built as a decoupled monorepo, Prixm includes a **FastAPI backend** (with MongoD
 prixm/
 ├── backend/            # FastAPI REST API + Renewals Scheduler
 │   ├── app/            # Main server, routers, database schemas, and background tasks
-│   ├── tests/          # pytest integration and validation suites
-│   └── Dockerfile      # Backend service container definition
-├── frontend/           # Angular 18 client-side web application
-│   ├── src/            # Angular modules, pages, components, and service integrations
-│   └── Dockerfile      # Frontend service container definition
+│   └── tests/          # pytest integration and validation suites
+├── frontend/           # React/Vite client-side web application
+│   └── src/            # React pages, components, context, and service integrations
 ├── components/ui/      # Shared React/TSX component designs (Shadcn/Aceternity visual reference)
 ├── lib/                # Shared utilities and Tailwind class merger reference helpers
-├── docker-compose.yml  # Main orchestration stack (Frontend, API, MongoDB, Redis)
 └── README.md           # Onboarding developer documentation (This file)
 ```
 
 ---
 
-## ⚡ Quick Start (Recommended — Docker Compose)
+## 🛠️ Local Development
 
-The fastest way to spin up the entire local ecosystem (Frontend, API, MongoDB, Redis) with pre-seeded test data is using Docker.
-
-```bash
-# 1. Start all containers and build services
-docker compose up --build
-```
-
-Once initialized, the services will be running on:
-* **Frontend Web Application**: [http://localhost:5173](http://localhost:5173)
-* **FastAPI Backend REST API**: [http://localhost:8000](http://localhost:8000)
-* **FastAPI Swagger Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
-* **MongoDB Instance**: `mongodb://localhost:27017`
-* **Redis Instance**: `redis://localhost:6379/0`
-
-*On first boot, the backend automatically seeds 8 realistic subscriptions (Netflix, Spotify, AWS, Notion, iCloud+, Figma, ChatGPT, NYT), placing 3-day and 7-day alert windows immediately on your dashboard feeds.*
-
----
-
-## 🛠️ Manual Local Development (Without Docker)
-
-If you prefer to run the services individually on your system, follow the steps below.
+Follow the steps below to run the backend and frontend services individually on your system.
 
 ### Prerequisites
 * **Python**: 3.10 or higher
@@ -95,7 +72,7 @@ If you prefer to run the services individually on your system, follow the steps 
 
 ---
 
-### Step 2: Frontend Setup (Angular 18)
+### Step 2: Frontend Setup (React/Vite)
 
 1. Navigate to the frontend directory:
    ```bash
@@ -107,7 +84,7 @@ If you prefer to run the services individually on your system, follow the steps 
    npm install
    ```
 
-3. Start the Angular local development server:
+3. Start the Vite local development server:
    ```bash
    npm start
    ```
