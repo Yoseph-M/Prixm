@@ -13,6 +13,7 @@ from fastapi.responses import HTMLResponse
 from .db import ensure_indexes, get_db
 from .logging_config import setup_logging
 from .middleware.request_logging import RequestLoggingMiddleware
+from .middleware.security_headers import SecurityHeadersMiddleware
 from .routers import alerts, analytics, auth, dashboard, payments, subscriptions
 from .scheduler import schedule_renewal, scheduler_loop
 from .seed import seed_if_empty
@@ -55,6 +56,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Prixm — Subscription Manager", lifespan=lifespan)
 
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
