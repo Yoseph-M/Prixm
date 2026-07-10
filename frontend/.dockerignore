@@ -1,5 +1,0 @@
-dist
-.env.local
-.git
-.angular
-node_modules
