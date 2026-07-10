@@ -1,9 +1,0 @@
-services:
-  api:
-    develop:
-      watch:
-        - path: ./app
-          target: /app/app
-          action: sync
-        - path: ./requirements.txt
-          action: rebuild
