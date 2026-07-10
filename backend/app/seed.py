@@ -2,7 +2,7 @@
 
 NOTE: In production with Firebase auth, seeds require a valid user_id.
 For the demo, we use a placeholder 'demo-user' uid. When a real user signs in,
-their subscriptions are created fresh — the seed data is only for local/Docker
+their subscriptions are created fresh — the seed data is only for local
 testing without Firebase configured.
 """
 from __future__ import annotations
