@@ -1,27 +1,31 @@
-# Frontend
+# Frontend (React + Vite + TypeScript)
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.2.21.
+This is the frontend component of Prixm, built using **React**, **Vite**, **TypeScript**, and styled with **Tailwind CSS**.
 
-## Development server
+## Getting Started
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+### Prerequisites
+- Node.js (v20.x or higher recommended)
+- npm or yarn
 
-## Code scaffolding
+### Installation
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+### Development Server
+Run the local development server:
+```bash
+npm start
+```
+The application will be accessible at `http://localhost:5173`.
 
-## Build
-
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
-
-## Running unit tests
-
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
-
-## Running end-to-end tests
-
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
-
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+### Scripts
+- `npm start`: Starts the development server, generating environments dynamically from `.env`.
+- `npm run build`: Compiles the TypeScript code and bundles the application for production using Vite.
+- `npm run preview`: Previews the production-built application locally.
