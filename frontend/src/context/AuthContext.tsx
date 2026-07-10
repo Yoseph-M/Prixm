@@ -37,6 +37,7 @@ const ERROR_MAP: Record<string, string> = {
   'auth/invalid-email':          'Please enter a valid email address.',
   'auth/too-many-requests':      'Too many attempts. Please wait and try again.',
   'auth/popup-closed-by-user':   'Sign-in popup was closed. Please try again.',
+  'auth/popup-blocked':          'Sign-in popup was blocked by your browser. Please allow popups for this site and try again.',
   'auth/network-request-failed': 'Network error. Check your connection.',
 };
 
@@ -132,10 +133,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const cred = await signInWithPopup(auth, googleProvider);
       setUser(cred.user);
     } catch (err: any) {
-      if (err.code === 'auth/popup-blocked') {
-        await signInWithRedirect(auth, googleProvider);
-        return;
-      }
       const mapped = mapError(err);
       setError(mapped);
       throw err;
