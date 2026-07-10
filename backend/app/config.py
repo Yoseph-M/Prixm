@@ -17,10 +17,15 @@ class Settings(BaseSettings):
     BASE_CURRENCY: str = "USD"
     # Days before next_renewal at which to fire alerts. Default = 7 and 3.
     ALERT_WINDOWS: str = "7,3"
+    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:5175,http://127.0.0.1:5175,http://localhost:3000"
 
     @property
     def alert_windows(self) -> list[int]:
         return [int(x) for x in self.ALERT_WINDOWS.split(",") if x.strip()]
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [x.strip() for x in self.CORS_ORIGINS.split(",") if x.strip()]
 
 
 settings = Settings()
