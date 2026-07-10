@@ -510,11 +510,30 @@ export const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="app-shell" style={{ justifyContent: 'center', alignItems: 'center' }}>
-        <div className="callback-spinner"></div>
+      <div className="flex flex-col h-screen w-screen items-center justify-center bg-[#0b0b0d] gap-4">
+        <div className="w-8 h-8 rounded-full border-2 border-white/10 border-t-[#e87070] animate-spin"></div>
+        <span className="text-xs text-white/30 tracking-widest uppercase font-medium">Loading dashboard…</span>
       </div>
     );
   }
+
+  if (error) {
+    return (
+      <div className="flex flex-col h-screen w-screen items-center justify-center bg-[#0b0b0d] gap-4 text-center px-6">
+        <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mb-2">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <h2 className="text-white text-base font-semibold">Failed to load dashboard</h2>
+        <p className="text-white/40 text-sm max-w-xs leading-relaxed">{error}</p>
+        <button onClick={fetchData} className="mt-2 px-5 py-2.5 bg-[#8b1a1a] text-white text-sm font-medium rounded-xl hover:bg-[#a52222] transition-colors">
+          Try again
+        </button>
+      </div>
+    );
+  }
+
 
   return (
     <div className="app-shell">
