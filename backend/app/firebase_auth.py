@@ -29,6 +29,9 @@ retry (expired) or force a re-login (invalid).
 """
 from __future__ import annotations
 
+import json
+import os
+
 import firebase_admin
 from firebase_admin import auth, credentials
 from fastapi import Depends, HTTPException, status
@@ -37,12 +40,22 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from .config import settings
 
 # ── Firebase Admin SDK initialisation ──────────────────────────────────────
-# The SDK reads the service account JSON from the path in the environment
-# variable GOOGLE_APPLICATION_CREDENTIALS (set in .env / docker-compose).
-# We initialise once at import time; subsequent calls are no-ops.
+# GOOGLE_APPLICATION_CREDENTIALS can be either:
+#   1. A file path to a service-account JSON (local dev / Docker volume mount)
+#   2. The raw JSON string itself (common in cloud deployments like Render,
+#      Railway, Vercel, etc. where you paste the key into an env var).
+# We detect which one it is and build the credential accordingly.
 try:
     if not firebase_admin._apps:
-        cred = credentials.Certificate(settings.GOOGLE_APPLICATION_CREDENTIALS)
+        cred_value = settings.GOOGLE_APPLICATION_CREDENTIALS
+
+        if os.path.isfile(cred_value):
+            # Case 1 – it's a valid file path
+            cred = credentials.Certificate(cred_value)
+        else:
+            # Case 2 – treat it as inline JSON
+            cred = credentials.Certificate(json.loads(cred_value))
+
         firebase_admin.initialize_app(cred)
 except Exception as e:
     # Allow app to start without Firebase in development
