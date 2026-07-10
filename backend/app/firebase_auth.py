@@ -41,7 +41,7 @@ from .config import settings
 
 # ── Firebase Admin SDK initialisation ──────────────────────────────────────
 # GOOGLE_APPLICATION_CREDENTIALS can be either:
-#   1. A file path to a service-account JSON (local dev / Docker volume mount)
+#   1. A file path to a service-account JSON (local dev)
 #   2. The raw JSON string itself (common in cloud deployments like Render,
 #      Railway, Vercel, etc. where you paste the key into an env var).
 # We detect which one it is and build the credential accordingly.
