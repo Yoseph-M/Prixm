@@ -14,15 +14,16 @@ function parseDotEnv(filePath) {
 
 try {
   const envConfig = parseDotEnv('.env');
+  const tsString = (value, fallback = '') => JSON.stringify(value || fallback);
   const envContent = `export const environment = {
-  VITE_FIREBASE_API_KEY: '${envConfig.VITE_FIREBASE_API_KEY || ''}',
-  VITE_FIREBASE_AUTH_DOMAIN: '${envConfig.VITE_FIREBASE_AUTH_DOMAIN || ''}',
-  VITE_FIREBASE_PROJECT_ID: '${envConfig.VITE_FIREBASE_PROJECT_ID || ''}',
-  VITE_FIREBASE_STORAGE_BUCKET: '${envConfig.VITE_FIREBASE_STORAGE_BUCKET || ''}',
-  VITE_FIREBASE_MESSAGING_SENDER_ID: '${envConfig.VITE_FIREBASE_MESSAGING_SENDER_ID || ''}',
-  VITE_FIREBASE_APP_ID: '${envConfig.VITE_FIREBASE_APP_ID || ''}',
-  VITE_API_URL: '${envConfig.VITE_API_URL || 'http://localhost:8000'}',
-  VITE_COMPANY_ENRICH_API_KEY: '${envConfig.VITE_COMPANY_ENRICH_API_KEY || ''}'
+  VITE_FIREBASE_API_KEY: ${tsString(envConfig.VITE_FIREBASE_API_KEY)},
+  VITE_FIREBASE_AUTH_DOMAIN: ${tsString(envConfig.VITE_FIREBASE_AUTH_DOMAIN)},
+  VITE_FIREBASE_PROJECT_ID: ${tsString(envConfig.VITE_FIREBASE_PROJECT_ID)},
+  VITE_FIREBASE_STORAGE_BUCKET: ${tsString(envConfig.VITE_FIREBASE_STORAGE_BUCKET)},
+  VITE_FIREBASE_MESSAGING_SENDER_ID: ${tsString(envConfig.VITE_FIREBASE_MESSAGING_SENDER_ID)},
+  VITE_FIREBASE_APP_ID: ${tsString(envConfig.VITE_FIREBASE_APP_ID)},
+  VITE_API_URL: ${tsString(envConfig.VITE_API_URL, 'http://localhost:8000')},
+  VITE_COMPANY_ENRICH_API_KEY: ${tsString(envConfig.VITE_COMPANY_ENRICH_API_KEY)}
 };`;
 
   if (!fs.existsSync('./src/environments')) {
