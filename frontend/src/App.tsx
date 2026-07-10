@@ -12,8 +12,9 @@ const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#0a0a0a] text-white">
-        <div className="btn-spinner-small" style={{ width: '24px', height: '24px', borderWidth: '3px' }}></div>
+      <div className="flex flex-col h-screen w-screen items-center justify-center bg-[#070709] gap-4">
+        <div className="w-8 h-8 rounded-full border-2 border-white/10 border-t-[#e87070] animate-spin"></div>
+        <span className="text-xs text-white/30 tracking-widest uppercase font-medium">Loading…</span>
       </div>
     );
   }
@@ -32,8 +33,9 @@ const GuestGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#0a0a0a] text-white">
-        <div className="btn-spinner-small" style={{ width: '24px', height: '24px', borderWidth: '3px' }}></div>
+      <div className="flex flex-col h-screen w-screen items-center justify-center bg-[#070709] gap-4">
+        <div className="w-8 h-8 rounded-full border-2 border-white/10 border-t-[#e87070] animate-spin"></div>
+        <span className="text-xs text-white/30 tracking-widest uppercase font-medium">Loading…</span>
       </div>
     );
   }
