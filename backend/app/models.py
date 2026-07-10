@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 BillingCycle = Literal["monthly", "yearly", "weekly"]
 CurrencyCode = Literal["USD", "ETB", "EUR", "GBP"]
@@ -21,24 +21,32 @@ class Payment(BaseModel):
     amount: Annotated[float, Field(gt=0)]
     currency: CurrencyCode
     amount_usd: Annotated[float, Field(ge=0)]
-    method: str = "card"
-    note: str | None = None
+    method: str = Field(default="card", min_length=1, max_length=64)
+    note: str | None = Field(default=None, max_length=500)
 
 
 class Cancellation(BaseModel):
     date: datetime
-    reason: str
+    reason: str = Field(min_length=1, max_length=500)
 
 
 class SubscriptionIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     vendor: str | None = Field(default=None, max_length=200)
     category: str = Field(default="other", max_length=64)
-    tags: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list, max_length=20)
     cost: Money
     billing_cycle: BillingCycle = "monthly"
     start_date: datetime | None = None
     next_renewal: datetime
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, tags: list[str]) -> list[str]:
+        for tag in tags:
+            if not tag or len(tag) > 64:
+                raise ValueError("tags must be between 1 and 64 characters")
+        return tags
 
 
 class StatusPatch(BaseModel):
@@ -59,7 +67,7 @@ class SubscriptionOut(SubscriptionIn):
 
 
 class CancelIn(BaseModel):
-    reason: str = Field(min_length=1)
+    reason: str = Field(min_length=1, max_length=500)
     date: datetime | None = None
 
 
@@ -67,8 +75,8 @@ class PaymentIn(BaseModel):
     amount: Annotated[float, Field(gt=0)]
     currency: CurrencyCode
     date: datetime | None = None
-    method: str = "card"
-    note: str | None = None
+    method: str = Field(default="card", min_length=1, max_length=64)
+    note: str | None = Field(default=None, max_length=500)
 
 
 class PaginatedSubscriptions(BaseModel):
