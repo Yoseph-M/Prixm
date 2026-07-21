@@ -6,6 +6,48 @@ import './Dashboard.css';
 
 type NavId = 'dashboard' | 'subscriptions' | 'analytics' | 'alerts' | 'payments' | 'cancelled' | 'settings';
 
+// Count-up animation hook
+function useCountUp(target: number, duration = 900): number {
+  const [value, setValue] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  useEffect(() => {
+    const start = Date.now();
+    const from = 0;
+    const tick = () => {
+      const elapsed = Date.now() - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(from + (target - from) * eased);
+      if (progress < 1) rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [target, duration]);
+  return value;
+}
+
+// Category heuristic for auto-suggest based on company domain/name
+const DOMAIN_CATEGORY_MAP: Record<string, string> = {
+  netflix: 'entertainment', spotify: 'entertainment', youtube: 'entertainment', disney: 'entertainment',
+  hulu: 'entertainment', apple: 'entertainment', amazon: 'entertainment',
+  github: 'development', gitlab: 'development', jira: 'development', linear: 'development',
+  vercel: 'development', heroku: 'development', aws: 'cloud_services', gcp: 'cloud_services',
+  azure: 'cloud_services', digitalocean: 'cloud_services', cloudflare: 'cloud_services',
+  figma: 'design', canva: 'design', adobe: 'design', sketch: 'design',
+  slack: 'communication', zoom: 'communication', teams: 'communication', discord: 'communication',
+  notion: 'productivity', asana: 'productivity', monday: 'productivity', trello: 'productivity',
+  dropbox: 'cloud_services', gdrive: 'cloud_services', google: 'productivity',
+  stripe: 'finance', quickbooks: 'finance', xero: 'finance',
+  hubspot: 'marketing', mailchimp: 'marketing', salesforce: 'marketing',
+};
+function guessCategory(name: string, domain?: string): string | null {
+  const haystack = ((domain || '') + ' ' + (name || '')).toLowerCase();
+  for (const [key, cat] of Object.entries(DOMAIN_CATEGORY_MAP)) {
+    if (haystack.includes(key)) return cat;
+  }
+  return null;
+}
+
 interface Company {
   name: string;
   domain?: string;
@@ -31,6 +73,20 @@ export const Dashboard: React.FC = () => {
 
   const [cancelledSubs, setCancelledSubs] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+
+  // Optimistic update: track pending deletes with undo capability
+  const [pendingDeletes, setPendingDeletes] = useState<Record<string, ReturnType<typeof setTimeout>>>({});
+  const [undoToast, setUndoToast] = useState<{ id: string; name: string } | null>(null);
+
+  // Sort + filter state for subscriptions
+  const [sortBy, setSortBy] = useState<'renewal' | 'cost' | 'name'>('renewal');
+  const [filterCategory, setFilterCategory] = useState<string>('');
+
+  // Cmd+K palette
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState('');
+  const paletteInputRef = useRef<HTMLInputElement>(null);
 
   const [settingsForm, setSettingsForm] = useState({
     displayName: '',
@@ -42,7 +98,6 @@ export const Dashboard: React.FC = () => {
   });
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [selectedSub, setSelectedSub] = useState<any>(null);
   const [newSubForm, setNewSubForm] = useState({
     name: '',
@@ -94,14 +149,57 @@ export const Dashboard: React.FC = () => {
   }, [subscriptions]);
 
   const filteredSubs = useMemo(() => {
-    if (!searchQuery) return subscriptions;
-    const q = searchQuery.toLowerCase();
-    return subscriptions.filter(s =>
-      s.name?.toLowerCase().includes(q) ||
-      s.vendor?.toLowerCase().includes(q) ||
-      s.category?.toLowerCase().includes(q)
-    );
-  }, [subscriptions, searchQuery]);
+    let result = subscriptions;
+    if (filterCategory) result = result.filter(s => s.category === filterCategory);
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(s =>
+        s.name?.toLowerCase().includes(q) ||
+        s.vendor?.toLowerCase().includes(q) ||
+        s.category?.toLowerCase().includes(q)
+      );
+    }
+    if (sortBy === 'cost') result = [...result].sort((a, b) => (b.cost_usd || 0) - (a.cost_usd || 0));
+    else if (sortBy === 'name') result = [...result].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    else result = [...result].sort((a, b) => new Date(a.next_renewal || '').getTime() - new Date(b.next_renewal || '').getTime());
+    return result;
+  }, [subscriptions, searchQuery, sortBy, filterCategory]);
+
+  // Highlight matched substring in text
+  const highlightMatch = (text: string, query: string): React.ReactNode => {
+    if (!query || !text) return text;
+    const idx = text.toLowerCase().indexOf(query.toLowerCase());
+    if (idx === -1) return text;
+    return <>{text.slice(0, idx)}<mark className="search-highlight">{text.slice(idx, idx + query.length)}</mark>{text.slice(idx + query.length)}</>;
+  };
+
+  // Unique categories for filter chips
+  const allCategories = useMemo(() => {
+    const cats = Array.from(new Set(subscriptions.map(s => s.category).filter(Boolean))) as string[];
+    return cats.sort();
+  }, [subscriptions]);
+
+  // Palette search results
+  type PaletteResult = { type: string; id: string; label: string; sub: string };
+  const paletteResults = useMemo((): PaletteResult[] => {
+    const q = paletteQuery.toLowerCase();
+    const subMatches: PaletteResult[] = subscriptions
+      .filter(s => !q || s.name?.toLowerCase().includes(q) || s.category?.toLowerCase().includes(q))
+      .slice(0, 5)
+      .map(s => ({ type: 'sub', id: s.id as string, label: s.name as string, sub: (s.category || '') as string }));
+    const navMatches: PaletteResult[] = ([
+      { type: 'nav', id: 'dashboard',     label: 'Go to Dashboard',     sub: '' },
+      { type: 'nav', id: 'subscriptions', label: 'Go to Subscriptions', sub: '' },
+      { type: 'nav', id: 'analytics',     label: 'Go to Analytics',     sub: '' },
+      { type: 'nav', id: 'alerts',        label: 'Go to Alerts',        sub: '' },
+      { type: 'nav', id: 'payments',      label: 'Go to Payments',      sub: '' },
+    ] as PaletteResult[]).filter(n => !q || n.label.toLowerCase().includes(q));
+    const addMatch: PaletteResult[] = (!q || 'add subscription'.includes(q))
+      ? [{ type: 'action', id: 'add', label: '+ Add subscription', sub: '' }]
+      : [];
+    return [...addMatch, ...navMatches, ...subMatches];
+  }, [subscriptions, paletteQuery]);
+
 
   const spendTrend = useMemo((): number[] => {
     return (analytics?.monthly_spend_trend || []).map((m: any) => m.total_usd ?? 0);
@@ -176,19 +274,17 @@ export const Dashboard: React.FC = () => {
       setSubsPages(sRes?.pages ?? 1);
       setAlerts(alRes || []);
 
-      setCancelledSubs([
-        { id: 'c1', name: 'Adobe Creative Cloud', vendor: 'Adobe', category: 'productivity', cost_usd: 54.99, cancel_reason: 'Too expensive, switched to Figma', cancelled_at: new Date(Date.now() - 90*86400000).toISOString() },
-        { id: 'c2', name: 'Slack Pro', vendor: 'Slack', category: 'communication', cost_usd: 8.00, cancel_reason: 'Company moved to Microsoft Teams', cancelled_at: new Date(Date.now() - 45*86400000).toISOString() }
-      ]);
+      // Fetch real cancelled subs
+      apiFetch('/subscriptions?status=cancelled&limit=50').then((cRes: any) => {
+        const cancelled = cRes?.data ?? (Array.isArray(cRes) ? cRes : []);
+        setCancelledSubs(cancelled);
+      }).catch(() => setCancelledSubs([]));
 
-      setPayments([
-        { id: 'p1', name: 'Netflix', vendor: 'Netflix', category: 'entertainment', cost_usd: 15.49, status: 'paid', date: new Date().toISOString() },
-        { id: 'p2', name: 'Spotify', vendor: 'Spotify', category: 'entertainment', cost_usd: 10.99, status: 'paid', date: new Date(Date.now() - 2*86400000).toISOString() },
-        { id: 'p3', name: 'GitHub Copilot', vendor: 'GitHub', category: 'development', cost_usd: 10.00, status: 'failed', date: new Date(Date.now() - 5*86400000).toISOString() },
-        { id: 'p4', name: 'AWS', vendor: 'Amazon', category: 'utilities', cost_usd: 42.10, status: 'paid', date: new Date(Date.now() - 32*86400000).toISOString() },
-        { id: 'p5', name: 'Figma', vendor: 'Figma', category: 'design', cost_usd: 15.00, status: 'paid', date: new Date(Date.now() - 7*86400000).toISOString() },
-        { id: 'p6', name: 'Linear', vendor: 'Linear', category: 'productivity', cost_usd: 8.00, status: 'paid', date: new Date(Date.now() - 10*86400000).toISOString() },
-      ]);
+      // Fetch real payments
+      setPaymentsLoading(true);
+      apiFetch('/payments').then((pRes: any) => {
+        setPayments(Array.isArray(pRes) ? pRes : []);
+      }).catch(() => setPayments([])).finally(() => setPaymentsLoading(false));
 
       setSettingsForm(prev => ({
         ...prev,
@@ -204,6 +300,47 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, [user]);
+
+  // Cmd+K palette global listener
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setPaletteOpen(p => !p);
+      }
+      if (e.key === 'Escape') {
+        setPaletteOpen(false);
+        if (drawerOpen) setDrawerOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [drawerOpen]);
+
+  // Auto-focus palette input
+  useEffect(() => {
+    if (paletteOpen && paletteInputRef.current) {
+      paletteInputRef.current.focus();
+    }
+  }, [paletteOpen]);
+
+  // Drawer keyboard: Enter advances step, Esc closes
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        const active = document.activeElement as HTMLElement;
+        if (active?.tagName === 'BUTTON' || active?.tagName === 'TEXTAREA') return;
+        if (currentStep < 4) {
+          if (currentStep === 1 && !newSubForm.name) return;
+          if (currentStep === 2 && !newSubForm.cost_usd) return;
+          setCurrentStep(s => s + 1);
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [drawerOpen, currentStep, newSubForm]);
 
   useEffect(() => {
     const handleGlobalClick = () => {
@@ -234,24 +371,39 @@ export const Dashboard: React.FC = () => {
   const closeDrawer = () => {
     setDrawerOpen(false);
     setSelectedSub(null);
-    setDeleteConfirmId(null);
   };
 
-  const deleteSub = async (id: string, e: React.MouseEvent) => {
+  const deleteSub = (id: string, name: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (deleteConfirmId !== id) {
-      setDeleteConfirmId(id);
-      return;
-    }
-    try {
-      await apiFetch(`/subscriptions/${id}`, { method: 'DELETE' });
-      await fetchData();
-      setDeleteConfirmId(null);
-      showToast('Subscription deleted', 'success');
-    } catch (err: any) {
-      showToast('Failed to delete', 'error');
-      setDeleteConfirmId(null);
-    }
+    // Optimistic: remove immediately from list
+    setSubscriptions(prev => prev.filter(s => s.id !== id));
+    setUndoToast({ id, name });
+
+    // Schedule actual API delete with 5s grace period
+    const timer = setTimeout(async () => {
+      try {
+        await apiFetch(`/subscriptions/${id}`, { method: 'DELETE' });
+        setUndoToast(null);
+        setPendingDeletes(prev => { const n = { ...prev }; delete n[id]; return n; });
+      } catch {
+        // Rollback on failure
+        setSubscriptions(prev => [...prev]);
+        await fetchData();
+        showToast('Failed to delete subscription', 'error');
+        setUndoToast(null);
+      }
+    }, 5000);
+    setPendingDeletes(prev => ({ ...prev, [id]: timer }));
+  };
+
+  const undoDelete = (id: string) => {
+    const timer = pendingDeletes[id];
+    if (timer) clearTimeout(timer);
+    setPendingDeletes(prev => { const n = { ...prev }; delete n[id]; return n; });
+    setUndoToast(null);
+    // Restore: refetch data
+    fetchData();
+    showToast('Delete cancelled', 'success');
   };
 
   const filterCompanies = async (val: string) => {
@@ -274,7 +426,12 @@ export const Dashboard: React.FC = () => {
   };
 
   const selectCompany = (company: Company) => {
-    setNewSubForm(prev => ({ ...prev, name: company.name }));
+    const suggestedCat = guessCategory(company.name, company.domain);
+    setNewSubForm(prev => ({
+      ...prev,
+      name: company.name,
+      ...(suggestedCat ? { category: suggestedCat } : {})
+    }));
     setShowCompanySuggestions(false);
   };
 
@@ -510,12 +667,38 @@ export const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col h-screen w-screen items-center justify-center bg-[#0b0b0d] gap-4">
-        <div className="w-8 h-8 rounded-full border-2 border-white/10 border-t-[#e87070] animate-spin"></div>
-        <span className="text-xs text-white/30 tracking-widest uppercase font-medium">Loading dashboard…</span>
+      <div className="app-shell">
+        <aside className="sidebar">
+          <div className="sidebar-brand">
+            <div className="skeleton skeleton-logo" />
+          </div>
+          <nav className="sidebar-nav">
+            {[...Array(5)].map((_, i) => <div key={i} className="skeleton skeleton-nav-item" />)}
+          </nav>
+        </aside>
+        <main className="main-content">
+          <div className="page-header">
+            <div>
+              <div className="skeleton skeleton-title" />
+              <div className="skeleton skeleton-sub" style={{ marginTop: '0.5rem' }} />
+            </div>
+          </div>
+          <div className="kpi-row">
+            {[...Array(4)].map((_, i) => <div key={i} className="kpi-card"><div className="skeleton skeleton-kpi" /></div>)}
+          </div>
+          <div className="dash-grid" style={{ marginTop: '1.5rem' }}>
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="dash-col">
+                <div className="card"><div className="skeleton skeleton-card-body" /></div>
+                <div className="card mt-card"><div className="skeleton skeleton-card-body" /></div>
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
+
 
   if (error) {
     return (
@@ -552,7 +735,6 @@ export const Dashboard: React.FC = () => {
               className={`nav-link ${activeNav === item.id ? 'active' : ''}`}
               onClick={() => {
                 setActiveNav(item.id);
-                setDeleteConfirmId(null);
               }}
             >
               <span className="nav-icon">
@@ -583,10 +765,18 @@ export const Dashboard: React.FC = () => {
         <div className="sidebar-footer">
           <button
             type="button"
+            className="cmd-k-btn"
+            onClick={() => setPaletteOpen(true)}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span>Quick search</span>
+            <kbd>⌘K</kbd>
+          </button>
+          <button
+            type="button"
             className={`nav-link ${activeNav === 'settings' ? 'active' : ''}`}
             onClick={() => {
               setActiveNav('settings');
-              setDeleteConfirmId(null);
             }}
           >
             <span className="nav-icon">
@@ -594,6 +784,7 @@ export const Dashboard: React.FC = () => {
             </span>
             Settings
           </button>
+
           <button
             type="button"
             className="user-sidebar-btn"
@@ -880,8 +1071,44 @@ export const Dashboard: React.FC = () => {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search subscriptions…"
                   />
+                  {searchQuery && (
+                    <button className="search-clear-btn" onClick={() => setSearchQuery('')} title="Clear search">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  )}
+                </div>
+                <div className="toolbar-right">
+                  <div className="sort-controls">
+                    <span className="sort-label">Sort:</span>
+                    {(['renewal', 'cost', 'name'] as const).map(s => (
+                      <button
+                        key={s}
+                        className={`sort-btn ${sortBy === s ? 'sort-btn-active' : ''}`}
+                        onClick={() => setSortBy(s)}
+                      >
+                        {s === 'renewal' ? 'Renewal' : s === 'cost' ? 'Cost' : 'Name'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
+              {allCategories.length > 0 && (
+                <div className="filter-chips">
+                  <button
+                    className={`filter-chip ${filterCategory === '' ? 'filter-chip-active' : ''}`}
+                    onClick={() => setFilterCategory('')}
+                  >All</button>
+                  {allCategories.map(cat => (
+                    <button
+                      key={cat}
+                      className={`filter-chip ${filterCategory === cat ? 'filter-chip-active' : ''}`}
+                      onClick={() => setFilterCategory(filterCategory === cat ? '' : cat)}
+                    >
+                      {categoryIcon(cat)} {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="table-wrap">
                 <table className="data-table">
                   <thead>
@@ -905,7 +1132,7 @@ export const Dashboard: React.FC = () => {
                                 {(sub.name || '?').charAt(0).toUpperCase()}
                               </div>
                               <div>
-                                <div className="sub-name">{sub.name}</div>
+                                <div className="sub-name">{highlightMatch(sub.name, searchQuery)}</div>
                                 <div className="sub-vendor">{sub.vendor || sub.name}</div>
                               </div>
                             </div>
@@ -931,15 +1158,11 @@ export const Dashboard: React.FC = () => {
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </button>
                             <button
-                              className={`action-btn action-btn-danger ${deleteConfirmId === sub.id ? 'confirm-delete' : ''}`}
-                              title={deleteConfirmId === sub.id ? 'Click again to confirm' : 'Delete'}
-                              onClick={(e) => deleteSub(sub.id, e)}
+                              className="action-btn action-btn-danger"
+                              title="Delete"
+                              onClick={(e) => deleteSub(sub.id, sub.name, e)}
                             >
-                              {deleteConfirmId === sub.id ? (
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                              ) : (
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                              )}
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
                             </button>
                           </td>
                         </tr>
@@ -1215,41 +1438,56 @@ export const Dashboard: React.FC = () => {
             </div>
 
             <div className="card">
-              <div className="table-wrap">
-                <table className="data-table">
-                  <thead>
-                    <tr><th>Service</th><th>Category</th><th>Amount</th><th>Date</th><th>Status</th></tr>
-                  </thead>
-                  <tbody>
-                    {payments.map(p => (
-                      <tr className="table-row" key={p.id}>
-                        <td>
-                          <div className="sub-name-cell">
-                            <div className="sub-avatar" style={{ background: `hsl(${(p.name?.charCodeAt(0) * 13 % 360)},55%,60%)` }}>{(p.name||'?').charAt(0).toUpperCase()}</div>
-                            <span className="sub-name">{p.name}</span>
-                          </div>
-                        </td>
-                        <td><span className={`cat-badge ${categoryClass(p.category)}`}>{categoryIcon(p.category)} {p.category}</span></td>
-                        <td className="sub-cost">{fmtCur(p.cost_usd)}</td>
-                        <td style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{fmtDate(p.date)}</td>
-                        <td>
-                          <span className={`payment-status ${p.status === 'paid' ? 'status-paid' : 'status-failed'}`}>
-                            {p.status === 'paid' ? (
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                            ) : (
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                            )}
-                            {p.status.charAt(0).toUpperCase() + p.status.slice(1)}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {paymentsLoading ? (
+                <div style={{ padding: '2rem' }}>
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="skeleton" style={{ height: 44, marginBottom: 10, borderRadius: 8 }} />
+                  ))}
+                </div>
+              ) : payments.length === 0 ? (
+                <div className="empty-state" style={{ padding: '3rem 0' }}>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                  <p>No payment history yet.</p>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '0.25rem' }}>Payments appear automatically as subscriptions renew.</p>
+                </div>
+              ) : (
+                <div className="table-wrap">
+                  <table className="data-table">
+                    <thead>
+                      <tr><th>Service</th><th>Category</th><th>Amount</th><th>Date</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                      {payments.map(p => (
+                        <tr className="table-row" key={p.id}>
+                          <td>
+                            <div className="sub-name-cell">
+                              <div className="sub-avatar" style={{ background: `hsl(${(p.name?.charCodeAt(0) * 13 % 360)},55%,60%)` }}>{(p.name||'?').charAt(0).toUpperCase()}</div>
+                              <span className="sub-name">{p.name}</span>
+                            </div>
+                          </td>
+                          <td><span className={`cat-badge ${categoryClass(p.category)}`}>{categoryIcon(p.category)} {p.category}</span></td>
+                          <td className="sub-cost">{fmtCur(p.cost_usd)}</td>
+                          <td style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{fmtDate(p.date)}</td>
+                          <td>
+                            <span className={`payment-status ${p.status === 'paid' ? 'status-paid' : 'status-failed'}`}>
+                              {p.status === 'paid' ? (
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                              ) : (
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                              )}
+                              {p.status.charAt(0).toUpperCase() + p.status.slice(1)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </>
         )}
+
 
         {/* ════════════════════ SETTINGS ════════════════════ */}
         {activeNav === 'settings' && (
@@ -1351,7 +1589,16 @@ export const Dashboard: React.FC = () => {
 
       </main>
 
-      {/* ── Toast ── */}
+      {/* ── Undo Delete Toast ── */}
+      {undoToast && (
+        <div className="toast toast-undo">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          <span>Deleted <strong>{undoToast.name}</strong></span>
+          <button className="toast-undo-btn" onClick={() => undoDelete(undoToast.id)}>Undo</button>
+        </div>
+      )}
+
+      {/* ── Regular Toast ── */}
       {toastMessage && (
         <div className={`toast ${toastType === 'error' ? 'toast-error' : ''}`}>
           {toastType === 'success' ? (
@@ -1363,6 +1610,44 @@ export const Dashboard: React.FC = () => {
         </div>
       )}
 
+      {/* ── Cmd+K Palette ── */}
+      {paletteOpen && (
+        <div className="palette-overlay" onClick={() => setPaletteOpen(false)}>
+          <div className="palette-panel" onClick={e => e.stopPropagation()}>
+            <div className="palette-search-row">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input
+                ref={paletteInputRef}
+                className="palette-input"
+                placeholder="Search or run a command…"
+                value={paletteQuery}
+                onChange={e => setPaletteQuery(e.target.value)}
+              />
+              <kbd className="palette-esc">Esc</kbd>
+            </div>
+            <div className="palette-results">
+              {paletteResults.length === 0 && (
+                <div className="palette-empty">No results</div>
+              )}
+              {paletteResults.map((r, i) => (
+                <button
+                  key={r.id + i}
+                  className={`palette-item palette-item-${r.type}`}
+                  onClick={() => {
+                    if (r.type === 'nav') { setActiveNav(r.id as NavId); setPaletteOpen(false); }
+                    else if (r.type === 'action') { openDrawer(); setPaletteOpen(false); }
+                    else if (r.type === 'sub') { openDrawer(subscriptions.find(s => s.id === r.id)); setPaletteOpen(false); }
+                  }}
+                >
+                  <span className="palette-item-label">{r.label}</span>
+                  {r.sub && <span className="palette-item-sub">{r.sub}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Add/Edit Subscription Drawer ── */}
       {drawerOpen && (
         <div className="drawer-overlay" onClick={closeDrawer}>
@@ -1370,6 +1655,11 @@ export const Dashboard: React.FC = () => {
             <div className="drawer-top">
               <div className="drawer-progress">
                 <div className="drawer-progress-bar" style={{ width: `${(currentStep / 4) * 100}%` }}></div>
+              </div>
+              <div className="drawer-step-dots">
+                {[1,2,3,4].map(s => (
+                  <span key={s} className={`drawer-dot ${currentStep === s ? 'drawer-dot-active' : currentStep > s ? 'drawer-dot-done' : ''}`} />
+                ))}
               </div>
               <button className="drawer-close" onClick={closeDrawer}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
