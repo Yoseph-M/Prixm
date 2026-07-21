@@ -18,9 +18,15 @@ NOT_DELETED = {"deleted_at": {"$exists": False}}
 DEFAULT_PAGE_SIZE = 20
 
 
+from difflib import SequenceMatcher
+
+
 def _serialize(doc: dict) -> dict:
     out = dict(doc)
     out["id"] = str(out.pop("_id"))
+    if out.get("cancellation"):
+        out["cancel_reason"] = out["cancellation"].get("reason")
+        out["cancelled_at"] = out["cancellation"].get("date")
     return out
 
 
@@ -76,6 +82,29 @@ async def create(user_id: str, payload: SubscriptionIn) -> dict:
     now = datetime.utcnow()
     sub_id = str(uuid.uuid4())
     cost_usd = await to_usd(payload.cost.amount, payload.cost.currency)
+
+    # Duplicate-subscription detection
+    existing_cursor = db.subscriptions.find(
+        _base_filter(user_id, {"status": "active", "category": payload.category})
+    )
+    existing_subs = [d async for d in existing_cursor]
+    warning_msg = None
+    p_name = payload.name.strip().lower()
+    p_vendor = (payload.vendor or "").strip().lower()
+
+    for sub in existing_subs:
+        s_name = sub.get("name", "").strip().lower()
+        s_vendor = (sub.get("vendor") or "").strip().lower()
+
+        name_sim = SequenceMatcher(None, p_name, s_name).ratio()
+        vendor_sim = (
+            SequenceMatcher(None, p_vendor, s_vendor).ratio() if p_vendor and s_vendor else 0
+        )
+
+        if name_sim >= 0.75 or (p_vendor and s_vendor and vendor_sim >= 0.75):
+            warning_msg = f"Possible duplicate subscription found: '{sub.get('name')}' in category '{payload.category}'"
+            break
+
     doc = {
         "_id": sub_id,
         "user_id": user_id,
@@ -90,7 +119,10 @@ async def create(user_id: str, payload: SubscriptionIn) -> dict:
     await db.subscriptions.insert_one(doc)
     await schedule_renewal(sub_id, payload.next_renewal)
     await invalidate_user_caches(user_id)
-    return _serialize(doc)
+    serialized = _serialize(doc)
+    if warning_msg:
+        serialized["warning"] = warning_msg
+    return serialized
 
 
 async def update(user_id: str, sub_id: str, payload: SubscriptionIn) -> dict:
