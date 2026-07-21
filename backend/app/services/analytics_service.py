@@ -52,6 +52,21 @@ async def get_analytics(user_id: str) -> dict[str, Any]:
         async for d in db.subscriptions.aggregate(by_cat_pipeline)
     ]
 
+    budget_cursor = db.budgets.find({"user_id": user_id})
+    budget_map = {b["category"].lower(): b["monthly_limit_usd"] async for b in budget_cursor}
+
+    for cat in by_cat:
+        cat_key = cat["category"].lower()
+        limit = budget_map.get(cat_key)
+        cat["budget_limit_usd"] = limit
+        if limit and limit > 0:
+            pct = round((cat["monthly_usd"] / limit) * 100, 1)
+            cat["percent_of_budget"] = pct
+            cat["over_budget"] = cat["monthly_usd"] > limit
+        else:
+            cat["percent_of_budget"] = None
+            cat["over_budget"] = False
+
     most_expensive = by_cat[0]["category"] if by_cat else None
 
     cancelled_pipeline = [
