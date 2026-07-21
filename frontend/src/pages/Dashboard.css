@@ -1509,3 +1509,253 @@
   .kpi-row, .analytics-kpi-row { grid-template-columns: 1fr; }
   .page-header { flex-direction: column; align-items: flex-start; }
 }
+
+/* ══════════════════════════════════════
+   Skeleton Loader
+   ══════════════════════════════════════ */
+@keyframes skeleton-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #e8e8e8 25%, #f0f0f0 50%, #e8e8e8 75%);
+  background-size: 800px 100%;
+  animation: skeleton-shimmer 1.4s infinite;
+  border-radius: 8px;
+}
+.skeleton-logo   { width: 80px; height: 28px; }
+.skeleton-nav-item { width: 100%; height: 38px; margin-bottom: 4px; border-radius: 10px; }
+.skeleton-title  { width: 200px; height: 28px; }
+.skeleton-sub    { width: 160px; height: 16px; }
+.skeleton-kpi    { width: 100%; height: 64px; }
+.skeleton-card-body { width: 100%; height: 180px; }
+
+/* ══════════════════════════════════════
+   Search Box Enhancements
+   ══════════════════════════════════════ */
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search-clear-btn {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-dim);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+.search-clear-btn:hover { color: var(--text-muted); }
+mark.search-highlight {
+  background: rgba(139, 26, 26, 0.18);
+  color: var(--accent);
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+/* ══════════════════════════════════════
+   Table Toolbar Enhancements
+   ══════════════════════════════════════ */
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.toolbar-right { display: flex; align-items: center; gap: 0.75rem; }
+.sort-controls { display: flex; align-items: center; gap: 4px; }
+.sort-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 500; margin-right: 2px; }
+.sort-btn {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sort-btn:hover { border-color: var(--border-h); color: var(--text); }
+.sort-btn-active { border-color: var(--accent) !important; color: var(--accent) !important; background: rgba(139,26,26,0.06) !important; }
+
+/* ══════════════════════════════════════
+   Category Filter Chips
+   ══════════════════════════════════════ */
+.filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.6rem 0.25rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+}
+.filter-chip {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.filter-chip:hover { border-color: var(--border-h); color: var(--text); }
+.filter-chip-active { border-color: var(--accent) !important; color: var(--accent) !important; background: rgba(139,26,26,0.07) !important; }
+
+/* ══════════════════════════════════════
+   Cmd+K Command Palette
+   ══════════════════════════════════════ */
+.palette-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+}
+.palette-panel {
+  width: 100%;
+  max-width: 520px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+.palette-search-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.palette-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text);
+  background: transparent;
+  font-family: inherit;
+}
+.palette-esc {
+  font-size: 0.7rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 2px 7px;
+  color: var(--text-muted);
+  font-family: inherit;
+  white-space: nowrap;
+}
+.palette-results { max-height: 360px; overflow-y: auto; padding: 0.5rem; }
+.palette-empty { padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.875rem; }
+.palette-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+  padding: 0.65rem 0.85rem;
+  border: none;
+  background: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.12s;
+  font-family: inherit;
+}
+.palette-item:hover { background: var(--bg); }
+.palette-item-label { font-size: 0.9rem; font-weight: 500; color: var(--text); }
+.palette-item-sub { font-size: 0.75rem; color: var(--text-muted); text-transform: capitalize; }
+.palette-item-action .palette-item-label { color: var(--accent); }
+
+/* ══════════════════════════════════════
+   Cmd+K Sidebar Button
+   ══════════════════════════════════════ */
+.cmd-k-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: 6px;
+  font-family: inherit;
+}
+.cmd-k-btn:hover { border-color: var(--border-h); color: var(--text); }
+.cmd-k-btn span { flex: 1; text-align: left; }
+.cmd-k-btn kbd {
+  font-size: 0.7rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 6px;
+  font-family: inherit;
+  color: var(--text-muted);
+}
+
+/* ══════════════════════════════════════
+   Undo Delete Toast
+   ══════════════════════════════════════ */
+.toast-undo {
+  background: #1c1c1e !important;
+  color: #fff !important;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  bottom: 5rem !important;
+}
+.toast-undo-btn {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #fff;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+.toast-undo-btn:hover { background: rgba(255,255,255,0.25); }
+
+/* ══════════════════════════════════════
+   Drawer Step Dots
+   ══════════════════════════════════════ */
+.drawer-step-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+  padding-left: 1rem;
+}
+.drawer-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border-h);
+  transition: all 0.2s;
+}
+.drawer-dot-active { background: var(--accent); transform: scale(1.3); }
+.drawer-dot-done   { background: var(--success); }
