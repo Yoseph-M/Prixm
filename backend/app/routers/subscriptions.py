@@ -31,6 +31,58 @@ async def list_subs(
     )
 
 
+from fastapi.responses import Response
+
+
+@router.get("/calendar.ics")
+async def get_calendar_ics(user: dict = Depends(get_current_user)):
+    subs_data = await svc.get_all(user["uid"], status="active", limit=100)
+    subs = subs_data.get("data", [])
+
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Prixm Subscription Manager//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "X-WR-CALNAME:Prixm Subscription Renewals",
+    ]
+
+    for sub in subs:
+        sub_id = sub.get("id")
+        name = sub.get("name", "Subscription")
+        cost = sub.get("cost_usd", 0.0)
+        category = sub.get("category", "")
+        next_renewal = sub.get("next_renewal")
+
+        dt = None
+        if isinstance(next_renewal, str):
+            try:
+                from datetime import datetime
+                dt = datetime.fromisoformat(next_renewal.replace("Z", "+00:00"))
+            except Exception:
+                pass
+        elif hasattr(next_renewal, "strftime"):
+            dt = next_renewal
+
+        if dt:
+            dt_str = dt.strftime("%Y%m%dT%H%M%SZ")
+            lines.extend([
+                "BEGIN:VEVENT",
+                f"UID:renewal-{sub_id}@prixm.app",
+                f"DTSTAMP:{dt_str}",
+                f"DTSTART:{dt_str}",
+                f"SUMMARY:Renewal: {name} (${cost:.2f})",
+                f"DESCRIPTION:Subscription {name} in {category} renews today for ${cost:.2f}",
+                "STATUS:CONFIRMED",
+                "END:VEVENT",
+            ])
+
+    lines.append("END:VCALENDAR")
+    ics_content = "\r\n".join(lines)
+    return Response(content=ics_content, media_type="text/calendar")
+
+
 @router.post("", status_code=201)
 async def create_sub(payload: SubscriptionIn, user: dict = Depends(get_current_user)):
     return await svc.create(user["uid"], payload)
