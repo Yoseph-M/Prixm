@@ -64,4 +64,34 @@ async def run_renewal_alert_scan() -> int:
         )
         fired += 1
 
+    # Scan trial pre-conversion alerts
+    trial_cursor = db.subscriptions.find(
+        {"deleted_at": {"$exists": False}, "status": "active", "is_trial": True, "trial_ends_at": {"$ne": None}}
+    )
+    async for sub in trial_cursor:
+        trial_ends = sub.get("trial_ends_at")
+        if not hasattr(trial_ends, "timestamp"):
+            continue
+        trial_ts = trial_ends.timestamp()
+        days_left = int((trial_ts - now) / 86400)
+        if 0 <= days_left <= SCAN_WINDOW_DAYS:
+            sentinel = f"alert:trial_sent:{sub['_id']}:{days_left}"
+            if await r.exists(sentinel):
+                continue
+            trial_alert = {
+                "subscription_id": str(sub["_id"]),
+                "user_id": sub.get("user_id"),
+                "name": sub.get("name"),
+                "type": "trial_ending",
+                "message": f"Trial for {sub.get('name')} ends in {days_left} day(s)",
+                "window_days": days_left,
+                "trial_ends_at": trial_ends,
+                "amount_usd": sub.get("cost_usd"),
+                "fired_at": datetime.utcnow(),
+            }
+            await _push_alert(trial_alert)
+            await r.set(sentinel, "1", ex=ALERT_SENT_TTL)
+            logger.info("trial_ending_alert sub_id=%s days_left=%s", sub["_id"], days_left)
+            fired += 1
+
     return fired
