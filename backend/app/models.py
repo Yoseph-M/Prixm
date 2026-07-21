@@ -17,10 +17,16 @@ class Money(BaseModel):
 
 
 class Payment(BaseModel):
+    id: str | None = None
+    sub_id: str | None = None
+    name: str | None = None
+    vendor: str | None = None
+    category: str | None = None
     date: datetime
     amount: Annotated[float, Field(gt=0)]
     currency: CurrencyCode
     amount_usd: Annotated[float, Field(ge=0)]
+    status: Literal["paid", "failed"] = "paid"
     method: str = Field(default="card", min_length=1, max_length=64)
     note: str | None = Field(default=None, max_length=500)
 
@@ -39,6 +45,8 @@ class SubscriptionIn(BaseModel):
     billing_cycle: BillingCycle = "monthly"
     start_date: datetime | None = None
     next_renewal: datetime
+    is_trial: bool = False
+    trial_ends_at: datetime | None = None
 
     @field_validator("tags")
     @classmethod
@@ -60,6 +68,8 @@ class SubscriptionOut(SubscriptionIn):
     cost_usd: float
     status: Status = "active"
     cancellation: Cancellation | None = None
+    cancel_reason: str | None = None
+    cancelled_at: datetime | None = None
     payments: list[Payment] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
@@ -75,8 +85,22 @@ class PaymentIn(BaseModel):
     amount: Annotated[float, Field(gt=0)]
     currency: CurrencyCode
     date: datetime | None = None
+    status: Literal["paid", "failed"] = "paid"
     method: str = Field(default="card", min_length=1, max_length=64)
     note: str | None = Field(default=None, max_length=500)
+
+
+class BudgetIn(BaseModel):
+    category: str = Field(min_length=1, max_length=64)
+    monthly_limit_usd: Annotated[float, Field(gt=0)]
+
+
+class BudgetOut(BudgetIn):
+    model_config = ConfigDict(populate_by_name=True)
+    id: str = Field(alias="_id")
+    user_id: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class PaginatedSubscriptions(BaseModel):
