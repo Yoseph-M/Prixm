@@ -34,11 +34,28 @@ async def get_alerts_feed() -> list[dict]:
     return json.loads(raw) if raw else []
 
 
+import logging
+
+logger = logging.getLogger("prixm.notifications")
+
+
+async def dispatch_notification(alert: dict) -> None:
+    """Delivers alert notification via logging / simulated email / webhook trigger."""
+    user_id = alert.get("user_id")
+    sub_name = alert.get("name")
+    msg = alert.get("message") or f"Alert for {sub_name}: renewing in {alert.get('window_days', 0)} days"
+    logger.info("DISPATCH_NOTIFICATION user_id=%s message='%s'", user_id, msg)
+
+
 async def _push_alert(alert: dict) -> None:
     feed = await get_alerts_feed()
     feed.insert(0, alert)
     feed = feed[:100]
     await get_redis().set(FEED_KEY, json.dumps(feed, default=str))
+    try:
+        await dispatch_notification(alert)
+    except Exception as err:
+        logger.error("Failed to dispatch notification: %s", err)
 
 
 async def _scan_once() -> None:
