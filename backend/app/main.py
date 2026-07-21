@@ -15,7 +15,7 @@ from .db import ensure_indexes, get_db
 from .logging_config import setup_logging
 from .middleware.request_logging import RequestLoggingMiddleware
 from .middleware.security_headers import SecurityHeadersMiddleware
-from .routers import alerts, analytics, auth, dashboard, payments, subscriptions
+from .routers import alerts, analytics, auth, budgets, dashboard, payments, subscriptions
 from .scheduler import schedule_renewal, scheduler_loop
 from .seed import seed_if_empty
 from .services.alert_scheduler_service import run_renewal_alert_scan
@@ -73,6 +73,7 @@ app.include_router(payments.router)
 app.include_router(dashboard.router)
 app.include_router(analytics.router)
 app.include_router(alerts.router)
+app.include_router(budgets.router)
 
 
 @app.get("/health")
